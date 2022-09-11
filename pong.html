@@ -1,0 +1,251 @@
+<!-- JAVASCRIPT PONG GAME USING HTML 5 + CANVAS 
+Started on 5/28/16, core game finished on 5/29/16-->
+<html>
+
+<canvas id ="gameCanvas" width="800" height="400">
+</canvas>
+
+<script>
+
+var canvas;
+var canvasContext;
+
+var ballx = 400;
+var bally = 200;
+var ballr = 10;
+var ballsx = -10;
+var ballsy = -4;
+var ballmax = 10;
+
+const PADDLE_WIDTH = 10;
+const PADDLE_HEIGHT = 100;
+var paddle1x = 0;
+var paddle1y = 50;
+
+var paddle2x = 800-PADDLE_WIDTH;
+var paddle2y = 50;
+var paddle2Speed = 15;
+
+const CENTER_SCREEN_X = 400;
+const CENTER_SCREEN_Y = 200;
+
+var player1Score = 0;
+var player2Score = 0;
+const MAX_SCORE = 5;
+
+var titleScreen = true;
+var winScreen = false;
+
+
+function calculateMousePos(evt) {
+	var rect = canvas.getBoundingClientRect();
+	var root = document.documentElement;
+	var mouseX = evt.clientX - rect.left - root.scrollLeft;
+	var mouseY = evt.clientY - rect.top - root.scrollTop;
+	return {
+		x:mouseX,
+		y:mouseY
+	};
+}
+
+function handleMouseClick(evt) {
+	if (titleScreen) {
+		titleScreen = false;
+	} else if (winScreen) {
+		player1Score = 0;
+		player2Score = 0;
+		winScreen = false;
+		titleScreen = true;
+	}
+}
+
+window.onload = function() {
+	canvas = document.getElementById('gameCanvas')
+	canvasContext = canvas.getContext('2d');
+
+	var FPS = 30;
+	setInterval(function() {
+		step();
+		drawAll();
+	}, 1000/FPS);
+
+
+	canvas.addEventListener('mousedown', handleMouseClick);
+
+
+	canvas.addEventListener('mousemove',
+		function(evt) {
+			var mousePos = calculateMousePos(evt);
+			paddle1y = mousePos.y-(PADDLE_HEIGHT/2);
+
+		});
+}
+
+function isPaused() {
+	return (titleScreen || winScreen);
+}
+
+function step() {
+	//Dont run this event if we are on the winscreen
+	if (isPaused()) {return}
+
+	//Reseting if the ball goes off the sides of the canvas
+	if (ballx-ballr > canvas.width) {
+		player1Score++;
+		ballReset();
+	} else if (ballx+ballr < 0) {
+		player2Score++;
+		ballReset();
+	}
+
+	//Bouncing the ball off the top and bottom of the canvas
+	if (bally+ballr > canvas.height || bally-ballr < 0) {
+		ballsy *= -1;
+		/*if (ballsx<0)
+		ballsx -= 2;
+		else
+		ballsx +=2;*/
+	}
+
+	//Bouncing the ball off the paddles
+	if (ballx-ballr < paddle1x+PADDLE_WIDTH && bally >= paddle1y && bally <= paddle1y+ PADDLE_HEIGHT) {
+		ballsx *= -1;
+		var deltaY = bally-(paddle1y+PADDLE_HEIGHT/2);
+		ballsy = deltaY * 0.25;
+	}
+
+	if (ballx+ballr > paddle2x && bally >= paddle2y && bally <= paddle2y+PADDLE_HEIGHT) {
+		ballsx *= -1;
+		var deltaY = bally-(paddle2y+PADDLE_HEIGHT/2);
+		ballsy = deltaY * 0.25;		
+	}
+
+	ballx += ballsx//min(ballsx, ballmax);
+	bally += ballsy//min(ballsy, ballmax);
+
+	aiMove();
+}
+
+function min(val1, val2) {
+	var val = val1;
+	if (val2 < val1)
+		val = val2;
+	return val;
+}
+
+function aiMove() {
+	if (ballsx < 0) {return}
+
+	var center = paddle2y + (PADDLE_HEIGHT/2);
+	if (center < bally-60) {
+		paddle2y += paddle2Speed;
+	} else if (center > bally+60) {
+		paddle2y -= paddle2Speed;
+	}
+}
+
+function ballReset() {
+	if (player1Score >= MAX_SCORE || player2Score >= MAX_SCORE) {
+		winScreen = true;
+	}
+
+	ballsx *= -1;
+	ballx = canvas.width/2;
+	bally = canvas.height/2;
+
+}
+
+function gameReset() {
+	ballReset();
+}
+
+function drawNet() {
+	for (var i = 0; i < canvas.height; i+=20) {
+		colorRect(canvas.width/2-1, i+5, 4, 10, 'white');
+	}
+}
+
+function drawAll() {
+	
+	// next line blanks out the screen with black
+	colorRect(0,0,canvas.width,canvas.height,'black');
+	var str;
+
+	if (titleScreen) {
+		canvasContext.font = "60px sans-serif";
+		canvasContext.fillStyle = 'white';
+
+		centerText("Pong", CENTER_SCREEN_X, 150);
+		canvasContext.font = "italic 12px sans-serif";
+		centerText("created by Anthony Silva", CENTER_SCREEN_X, CENTER_SCREEN_Y);
+		canvasContext.font = "normal 20px sans-serif";
+		centerText("click to begin", CENTER_SCREEN_X, CENTER_SCREEN_Y+150);
+		return;
+	}
+
+	if (winScreen) {
+		canvasContext.font = "60px sans-serif";
+		canvasContext.fillStyle = 'white';
+
+		if (player1Score >= MAX_SCORE) {
+			centerText("Player Won!", CENTER_SCREEN_X, 150);
+		} else if (player2Score >= MAX_SCORE) {
+			centerText("Computer Won!", CENTER_SCREEN_X, 150);
+		}
+		centerText(player1Score, CENTER_SCREEN_X-50, 250);
+		centerText(player2Score, CENTER_SCREEN_X+50, 250);		
+		canvasContext.font = "20px sans-serif";
+		centerText("Click to continue...", CENTER_SCREEN_X, CENTER_SCREEN_Y+100);
+		return;
+	}
+
+
+	//Draw Canvas
+	colorRect(0, 0, canvas.width, canvas.height, 'black');
+	//Draw net
+	drawNet();
+
+	//Draw walls
+	//colorRect(wall1x, wall1y, wall1w, wall1h);
+	//colorRect(wall2x, wall2y, wall2w, wall2h);
+
+	//Draw Ball
+	colorCircle(ballx, bally, ballr, 'white');
+
+	//Draw Paddle 1
+	colorRect(paddle1x, paddle1y, PADDLE_WIDTH, PADDLE_HEIGHT, 'white');
+
+	//Draw Paddle 2
+	colorRect(paddle2x, paddle2y, PADDLE_WIDTH, PADDLE_HEIGHT, 'white');		
+
+	//Draw score
+	canvasContext.font = "60px sans-serif";
+	centerText(player1Score, CENTER_SCREEN_X-50, 50);
+	centerText(player2Score, CENTER_SCREEN_X+50, 50);
+
+}
+
+function centerText(str, x, y) {
+	canvasContext.fillText(str, x-strWidth(str)/2, y);
+}
+
+function strWidth(str) {
+	return canvasContext.measureText(str).width;
+}
+
+function colorCircle(x, y, r, color) {
+	canvasContext.fillStyle = color;
+	canvasContext.beginPath();
+	canvasContext.arc(x, y, r, 0, Math.PI*2, true);
+	canvasContext.fill();
+}
+
+function colorRect(x, y, w, h, color) {
+	canvasContext.fillStyle = color;
+	canvasContext.fillRect(x, y, w, h);	
+}
+
+</script>
+
+
+</html>
